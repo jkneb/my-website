@@ -1,6 +1,28 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Pencil, Trash2 } from "lucide-react";
 
 interface User {
   id: string;
@@ -18,14 +40,22 @@ interface Project {
   status: "Freelance" | "CDI";
 }
 
+interface Client {
+  id: string;
+  name: string;
+  logo: string;
+}
+
 export default function Dashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const router = useRouter();
 
   useEffect(() => {
     fetchUsers();
     fetchProjects();
+    fetchClients();
   }, []);
 
   const fetchUsers = async () => {
@@ -45,6 +75,30 @@ export default function Dashboard() {
       setProjects(data);
     } else {
       console.error("Failed to fetch projects");
+    }
+  };
+
+  const fetchClients = async () => {
+    const response = await fetch("/api/clients");
+    if (response.ok) {
+      const data = await response.json();
+      setClients(data);
+    } else {
+      console.error("Failed to fetch clients");
+    }
+  };
+
+  const handleDelete = async (
+    type: "user" | "project" | "client",
+    id: string
+  ) => {
+    const response = await fetch(`/api/${type}s/${id}`, { method: "DELETE" });
+    if (response.ok) {
+      if (type === "user") fetchUsers();
+      else if (type === "project") fetchProjects();
+      else if (type === "client") fetchClients();
+    } else {
+      console.error(`Failed to delete ${type}`);
     }
   };
 
@@ -70,12 +124,9 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center">
-              <button
-                onClick={handleLogout}
-                className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
+              <Button onClick={handleLogout} variant="outline">
                 Logout
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -92,75 +143,256 @@ export default function Dashboard() {
         <main>
           <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div className="px-4 py-8 sm:px-0">
-              <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-                {/* Users Section */}
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                  <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-                    <h2 className="text-lg leading-6 font-medium text-gray-900">
-                      Users
-                    </h2>
-                    <Link
-                      href="/users/create"
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      Create User
-                    </Link>
-                  </div>
-                  <div className="border-t border-gray-200">
-                    <ul className="divide-y divide-gray-200">
-                      {users.map((user) => (
-                        <li key={user.id} className="px-4 py-4">
-                          <div className="flex items-center space-x-4">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {user.username}
-                              </p>
-                              <p className="text-sm text-gray-500 truncate">
-                                {user.email}
-                              </p>
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+              <div className="space-y-8">
+                <Card>
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>Users</CardTitle>
+                      <Link href="/users/create" passHref>
+                        <Button>Create User</Button>
+                      </Link>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Username</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {users.map((user) => (
+                          <TableRow
+                            key={user.id}
+                            className="cursor-pointer hover:bg-gray-100"
+                            onClick={() => router.push(`/users/${user.id}`)}
+                          >
+                            <TableCell>{user.username}</TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                              <div
+                                className="flex space-x-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    router.push(`/users/${user.id}/edit`)
+                                  }
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>
+                                        Are you sure?
+                                      </AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will
+                                        permanently delete the user.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>
+                                        Cancel
+                                      </AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() =>
+                                          handleDelete("user", user.id)
+                                        }
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
 
-                {/* Projects Section */}
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                  <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-                    <h2 className="text-lg leading-6 font-medium text-gray-900">
-                      Projects
-                    </h2>
-                    <Link
-                      href="/projects/create"
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      Create Project
-                    </Link>
-                  </div>
-                  <div className="border-t border-gray-200">
-                    <ul className="divide-y divide-gray-200">
-                      {projects.map((project) => (
-                        <li key={project.id} className="px-4 py-4">
-                          <div className="flex items-center space-x-4">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {project.role}
-                              </p>
-                              <p className="text-sm text-gray-500 truncate">
-                                {project.company}
-                              </p>
-                            </div>
-                            <div className="inline-flex items-center text-base font-semibold text-gray-900">
-                              {project.status}
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+                <Card>
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>Projects</CardTitle>
+                      <Link href="/projects/create" passHref>
+                        <Button>Create Project</Button>
+                      </Link>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Company</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {projects.map((project) => (
+                          <TableRow
+                            key={project.id}
+                            className="cursor-pointer hover:bg-gray-100"
+                            onClick={() =>
+                              router.push(`/projects/${project.id}`)
+                            }
+                          >
+                            <TableCell>{project.role}</TableCell>
+                            <TableCell>{project.company}</TableCell>
+                            <TableCell>{project.status}</TableCell>
+                            <TableCell>
+                              <div
+                                className="flex space-x-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    router.push(`/projects/${project.id}/edit`)
+                                  }
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>
+                                        Are you sure?
+                                      </AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will
+                                        permanently delete the project.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>
+                                        Cancel
+                                      </AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() =>
+                                          handleDelete("project", project.id)
+                                        }
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <CardTitle>Clients</CardTitle>
+                      <Link href="/clients/create" passHref>
+                        <Button>Create Client</Button>
+                      </Link>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Logo</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {clients.map((client) => (
+                          <TableRow
+                            key={client.id}
+                            className="cursor-pointer hover:bg-gray-100"
+                            onClick={() => router.push(`/clients/${client.id}`)}
+                          >
+                            <TableCell>{client.name}</TableCell>
+                            <TableCell>
+                              <img
+                                src={client.logo}
+                                alt={`${client.name} logo`}
+                                className="h-8 w-8 rounded-full"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div
+                                className="flex space-x-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    router.push(`/clients/${client.id}/edit`)
+                                  }
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>
+                                        Are you sure?
+                                      </AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will
+                                        permanently delete the client.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>
+                                        Cancel
+                                      </AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() =>
+                                          handleDelete("client", client.id)
+                                        }
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>

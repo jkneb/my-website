@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -7,21 +7,47 @@ import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid";
 
-export default function CreateUser() {
+interface User {
+  id: string;
+  email: string;
+  username: string;
+}
+
+export default function EditUser() {
+  const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const { id } = router.query;
+
+  useEffect(() => {
+    if (id) {
+      fetchUser();
+    }
+  }, [id]);
+
+  const fetchUser = async () => {
+    try {
+      const response = await fetch(`/api/users/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data);
+        setEmail(data.email);
+        setUsername(data.username);
+      } else {
+        console.error("Failed to fetch user");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,17 +55,17 @@ export default function CreateUser() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/users", {
-        method: "POST",
+      const response = await fetch(`/api/users/${id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, username, password }),
+        body: JSON.stringify({ email, username }),
       });
 
       if (response.ok) {
-        router.push("/dashboard");
+        router.push(`/users/${id}`);
       } else {
         const data = await response.json();
-        setError(data.message || "An error occurred while creating the user.");
+        setError(data.message || "An error occurred while updating the user.");
       }
     } catch (error) {
       console.error(error);
@@ -49,16 +75,15 @@ export default function CreateUser() {
     }
   };
 
-  const toggleShowPassword = () => {
-    setShowPassword(!showPassword);
-  };
+  if (!user) {
+    return <div>Loading...</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md mx-auto">
+    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+      <Card className="max-w-md mx-auto">
         <CardHeader>
-          <CardTitle>Create New User</CardTitle>
-          <CardDescription>Enter the details for the new user</CardDescription>
+          <CardTitle>Edit User</CardTitle>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
@@ -82,37 +107,14 @@ export default function CreateUser() {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={toggleShowPassword}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
-            </div>
             {error && <div className="text-red-600 text-sm">{error}</div>}
           </CardContent>
           <CardFooter className="flex justify-between">
-            <Link href="/dashboard">
+            <Link href={`/users/${id}`} passHref>
               <Button variant="outline">Cancel</Button>
             </Link>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create User"}
+              {isLoading ? "Updating..." : "Update User"}
             </Button>
           </CardFooter>
         </form>

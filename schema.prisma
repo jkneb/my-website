@@ -28,6 +28,15 @@ model Project {
     location  String?
     links     String[]
     status    Status
+    client    Client?   @relation(fields: [clientId], references: [id])
+    clientId  String?   @db.ObjectId
+}
+
+model Client {
+    id       String    @id @default(auto()) @map("_id") @db.ObjectId
+    name     String
+    logo     String
+    projects Project[]
 }
 
 enum Status {

@@ -35,7 +35,7 @@ async function getUsers(req: NextApiRequest, res: NextApiResponse) {
     });
     res.status(200).json(users);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ message: "Error fetching users" });
   }
 }
@@ -43,13 +43,20 @@ async function getUsers(req: NextApiRequest, res: NextApiResponse) {
 async function createUser(req: NextApiRequest, res: NextApiResponse) {
   const { email, username, password } = req.body;
 
-  // Here, you would typically validate the email and password against your database
-  // For this example, we'll just check if they're not empty
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required" });
   }
 
   try {
+    // Check if user with the given email already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already in use" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: {
@@ -74,7 +81,7 @@ async function createUser(req: NextApiRequest, res: NextApiResponse) {
       user: { id: user.id, email: user.email, username: user.username },
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ message: "Error creating user" });
   }
 }

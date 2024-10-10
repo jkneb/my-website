@@ -43,7 +43,7 @@ async function getUser(req: NextApiRequest, res: NextApiResponse, id: string) {
 
     res.status(200).json(user);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ message: "Error fetching user" });
   }
 }
@@ -66,7 +66,7 @@ async function updateUser(
       .status(200)
       .json({ message: "User updated successfully", user: updatedUser });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ message: "Error updating user" });
   }
 }
@@ -80,7 +80,7 @@ async function deleteUser(
     await prisma.user.delete({ where: { id } });
     res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ message: "Error deleting user" });
   }
 }

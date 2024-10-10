@@ -1,14 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -21,17 +19,54 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export default function CreateProject() {
+interface Project {
+  id: string;
+  role: string;
+  company: string;
+  startDate: string;
+  endDate: string | null;
+  location: string;
+  status: "Freelance" | "CDI";
+}
+
+export default function EditProject() {
+  const [project, setProject] = useState<Project | null>(null);
   const [role, setRole] = useState("");
   const [company, setCompany] = useState("");
-  const [text, setText] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [location, setLocation] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState<"Freelance" | "CDI">("Freelance");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { id } = router.query;
+
+  useEffect(() => {
+    if (id) {
+      fetchProject();
+    }
+  }, [id]);
+
+  const fetchProject = async () => {
+    try {
+      const response = await fetch(`/api/projects/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setProject(data);
+        setRole(data.role);
+        setCompany(data.company);
+        setStartDate(data.startDate.split("T")[0]);
+        setEndDate(data.endDate ? data.endDate.split("T")[0] : "");
+        setLocation(data.location);
+        setStatus(data.status);
+      } else {
+        console.error("Failed to fetch project");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,13 +74,12 @@ export default function CreateProject() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/projects", {
-        method: "POST",
+      const response = await fetch(`/api/projects/${id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           role,
           company,
-          text,
           startDate,
           endDate,
           location,
@@ -54,11 +88,11 @@ export default function CreateProject() {
       });
 
       if (response.ok) {
-        router.push("/dashboard");
+        router.push(`/projects/${id}`);
       } else {
         const data = await response.json();
         setError(
-          data.message || "An error occurred while creating the project."
+          data.message || "An error occurred while updating the project."
         );
       }
     } catch (error) {
@@ -69,14 +103,15 @@ export default function CreateProject() {
     }
   };
 
+  if (!project) {
+    return <div>Loading...</div>;
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+      <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle>Create New Project</CardTitle>
-          <CardDescription>
-            Enter the details for the new project
-          </CardDescription>
+          <CardTitle>Edit Project</CardTitle>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
@@ -99,34 +134,24 @@ export default function CreateProject() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="text">Description</Label>
-              <Textarea
-                id="text"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Start Date</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="endDate">End Date</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="endDate">End Date</Label>
+
+              <Input
+                id="endDate"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
@@ -139,7 +164,10 @@ export default function CreateProject() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select onValueChange={setStatus} value={status} required>
+              <Select
+                onValueChange={(value: "Freelance" | "CDI") => setStatus(value)}
+                value={status}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
@@ -152,11 +180,11 @@ export default function CreateProject() {
             {error && <div className="text-red-600 text-sm">{error}</div>}
           </CardContent>
           <CardFooter className="flex justify-between">
-            <Link href="/dashboard">
+            <Link href={`/projects/${id}`} passHref>
               <Button variant="outline">Cancel</Button>
             </Link>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Project"}
+              {isLoading ? "Updating..." : "Update Project"}
             </Button>
           </CardFooter>
         </form>

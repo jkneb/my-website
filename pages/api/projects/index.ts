@@ -31,7 +31,7 @@ async function getProjects(req: NextApiRequest, res: NextApiResponse) {
     const projects = await prisma.project.findMany();
     res.status(200).json(projects);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ message: "Error fetching projects" });
   }
 }
@@ -66,7 +66,7 @@ async function createProject(req: NextApiRequest, res: NextApiResponse) {
 
     res.status(201).json({ message: "Project created successfully", project });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ message: "Error creating project" });
   }
 }

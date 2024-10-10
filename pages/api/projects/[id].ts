@@ -44,7 +44,7 @@ async function getProject(
 
     res.status(200).json(project);
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ message: "Error fetching project" });
   }
 }
@@ -87,7 +87,7 @@ async function updateProject(
       project: updatedProject,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ message: "Error updating project" });
   }
 }
@@ -101,7 +101,7 @@ async function deleteProject(
     await prisma.project.delete({ where: { id } });
     res.status(200).json({ message: "Project deleted successfully" });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ message: "Error deleting project" });
   }
 }
