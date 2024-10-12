@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import prisma from "../../../lib/prisma";
-import { jwtVerify } from "jose";
+import { verifyToken } from "../../../lib/jwt";
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,16 +9,9 @@ export default async function handler(
   const token = req.cookies.token;
 
   if (token) {
-    try {
-      const { payload } = await jwtVerify(
-        token,
-        new TextEncoder().encode(process.env.JWT_SECRET)
-      );
-      if (!payload) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-    } catch (error) {
-      console.error(error);
+    const decodedToken = await verifyToken(token);
+
+    if (!decodedToken) {
       return res.status(401).json({ message: "Unauthorized" });
     }
   }
@@ -45,14 +38,23 @@ async function getClient(
   try {
     const client = await prisma.client.findUnique({
       where: { id },
-      include: { projects: true },
+      include: {
+        projects: {
+          select: {
+            id: true,
+            role: true,
+            startDate: true,
+            endDate: true,
+            status: true,
+          },
+        },
+      },
     });
-
-    if (!client) {
-      return res.status(404).json({ message: "Client not found" });
+    if (client) {
+      res.status(200).json(client);
+    } else {
+      res.status(404).json({ message: "Client not found" });
     }
-
-    res.status(200).json(client);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error fetching client" });
@@ -66,6 +68,10 @@ async function updateClient(
 ) {
   const { name, logo } = req.body;
 
+  if (!name || !logo) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
   try {
     const updatedClient = await prisma.client.update({
       where: { id },
@@ -74,7 +80,6 @@ async function updateClient(
         logo,
       },
     });
-
     res.status(200).json({
       message: "Client updated successfully",
       client: updatedClient,
@@ -91,7 +96,9 @@ async function deleteClient(
   id: string
 ) {
   try {
-    await prisma.client.delete({ where: { id } });
+    await prisma.client.delete({
+      where: { id },
+    });
     res.status(200).json({ message: "Client deleted successfully" });
   } catch (error) {
     console.error(error);

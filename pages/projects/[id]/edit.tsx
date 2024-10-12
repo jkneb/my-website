@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,25 +20,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Infobox } from "@/components";
+
+const MdEditor = dynamic(() => import("react-markdown-editor-lite"), {
+  ssr: false,
+});
 
 interface Project {
   id: string;
   role: string;
-  company: string;
   startDate: string;
   endDate: string | null;
   location: string;
   status: "Freelance" | "CDI";
+  description: string;
+  clientId: string;
+}
+
+interface Client {
+  id: string;
+  name: string;
 }
 
 export default function EditProject() {
   const [project, setProject] = useState<Project | null>(null);
   const [role, setRole] = useState("");
-  const [company, setCompany] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [location, setLocation] = useState("");
   const [status, setStatus] = useState<"Freelance" | "CDI">("Freelance");
+  const [description, setDescription] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [clients, setClients] = useState<Client[]>([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -46,6 +61,7 @@ export default function EditProject() {
     if (id) {
       fetchProject();
     }
+    fetchClients();
   }, [id]);
 
   const fetchProject = async () => {
@@ -55,17 +71,36 @@ export default function EditProject() {
         const data = await response.json();
         setProject(data);
         setRole(data.role);
-        setCompany(data.company);
         setStartDate(data.startDate.split("T")[0]);
         setEndDate(data.endDate ? data.endDate.split("T")[0] : "");
         setLocation(data.location);
         setStatus(data.status);
+        setDescription(data.description);
+        setClientId(data.clientId);
       } else {
         console.error("Failed to fetch project");
       }
     } catch (error) {
       console.error("Error:", error);
     }
+  };
+
+  const fetchClients = async () => {
+    try {
+      const response = await fetch("/api/clients");
+      if (response.ok) {
+        const data = await response.json();
+        setClients(data);
+      } else {
+        console.error("Failed to fetch clients");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  const handleEditorChange = ({ text }: { text: string }) => {
+    setDescription(text);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -79,11 +114,12 @@ export default function EditProject() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           role,
-          company,
           startDate,
           endDate,
           location,
           status,
+          description,
+          clientId,
         }),
       });
 
@@ -109,7 +145,7 @@ export default function EditProject() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="max-w-2xl mx-auto">
+      <Card className="max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle>Edit Project</CardTitle>
         </CardHeader>
@@ -125,15 +161,6 @@ export default function EditProject() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="company">Company</Label>
-              <Input
-                id="company"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="startDate">Start Date</Label>
               <Input
                 id="startDate"
@@ -145,7 +172,6 @@ export default function EditProject() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="endDate">End Date</Label>
-
               <Input
                 id="endDate"
                 type="date"
@@ -177,7 +203,31 @@ export default function EditProject() {
                 </SelectContent>
               </Select>
             </div>
-            {error && <div className="text-red-600 text-sm">{error}</div>}
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <MdEditor
+                value={description}
+                style={{ height: "300px" }}
+                renderHTML={(text) => <ReactMarkdown>{text}</ReactMarkdown>}
+                onChange={handleEditorChange}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="clientId">Client</Label>
+              <Select onValueChange={setClientId} value={clientId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {error && <Infobox message={error} type="error" />}
           </CardContent>
           <CardFooter className="flex justify-between">
             <Link href={`/projects/${id}`} passHref>

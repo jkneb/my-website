@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import prisma from "../../../lib/prisma";
-import { jwtVerify } from "jose";
+import { verifyToken } from "../../../lib/jwt";
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,16 +9,9 @@ export default async function handler(
   const token = req.cookies.token;
 
   if (token) {
-    try {
-      const { payload } = await jwtVerify(
-        token,
-        new TextEncoder().encode(process.env.JWT_SECRET)
-      );
-      if (!payload) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-    } catch (error) {
-      console.error(error);
+    const decodedToken = await verifyToken(token);
+
+    if (!decodedToken) {
       return res.status(401).json({ message: "Unauthorized" });
     }
   }
@@ -35,7 +28,13 @@ export default async function handler(
 
 async function getClients(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const clients = await prisma.client.findMany();
+    const clients = await prisma.client.findMany({
+      include: {
+        projects: {
+          select: { id: true, role: true },
+        },
+      },
+    });
     res.status(200).json(clients);
   } catch (error) {
     console.error(error);
@@ -46,6 +45,10 @@ async function getClients(req: NextApiRequest, res: NextApiResponse) {
 async function createClient(req: NextApiRequest, res: NextApiResponse) {
   const { name, logo } = req.body;
 
+  if (!name || !logo) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
   try {
     const client = await prisma.client.create({
       data: {
@@ -53,8 +56,10 @@ async function createClient(req: NextApiRequest, res: NextApiResponse) {
         logo,
       },
     });
-
-    res.status(201).json({ message: "Client created successfully", client });
+    res.status(201).json({
+      message: "Client created successfully",
+      client,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error creating client" });

@@ -18,25 +18,26 @@ model User {
 }
 
 model Project {
-    id        String    @id @default(auto()) @map("_id") @db.ObjectId
-    role      String
-    company   String?
-    images    String[]
-    text      String?
-    startDate DateTime
-    endDate   DateTime?
-    location  String?
-    links     String[]
-    status    Status
-    client    Client?   @relation(fields: [clientId], references: [id])
-    clientId  String?   @db.ObjectId
+    id          String    @id @default(auto()) @map("_id") @db.ObjectId
+    role        String
+    startDate   DateTime
+    endDate     DateTime?
+    location    String
+    status      String
+    description String
+    clientId    String?   @db.ObjectId
+    client      Client?   @relation(fields: [clientId], references: [id])
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
 }
 
 model Client {
-    id       String    @id @default(auto()) @map("_id") @db.ObjectId
-    name     String
-    logo     String
-    projects Project[]
+    id        String    @id @default(auto()) @map("_id") @db.ObjectId
+    name      String
+    logo      String
+    projects  Project[]
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
 }
 
 enum Status {

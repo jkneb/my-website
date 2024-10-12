@@ -9,7 +9,7 @@ export default async function handler(
   const token = req.cookies.token;
 
   if (token) {
-    const decodedToken = verifyToken(token);
+    const decodedToken = await verifyToken(token);
 
     if (!decodedToken) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -36,13 +36,19 @@ async function getProject(
   id: string
 ) {
   try {
-    const project = await prisma.project.findUnique({ where: { id } });
-
-    if (!project) {
-      return res.status(404).json({ message: "Project not found" });
+    const project = await prisma.project.findUnique({
+      where: { id },
+      include: {
+        client: {
+          select: { name: true },
+        },
+      },
+    });
+    if (project) {
+      res.status(200).json(project);
+    } else {
+      res.status(404).json({ message: "Project not found" });
     }
-
-    res.status(200).json(project);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error fetching project" });
@@ -54,34 +60,26 @@ async function updateProject(
   res: NextApiResponse,
   id: string
 ) {
-  const {
-    role,
-    company,
-    images,
-    text,
-    startDate,
-    endDate,
-    location,
-    links,
-    status,
-  } = req.body;
+  const { role, startDate, endDate, location, status, description, clientId } =
+    req.body;
+
+  if (!role || !startDate || !location || !status || !description) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
 
   try {
     const updatedProject = await prisma.project.update({
       where: { id },
       data: {
         role,
-        company,
-        images,
-        text,
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : null,
         location,
-        links,
         status,
+        description,
+        clientId: clientId || null,
       },
     });
-
     res.status(200).json({
       message: "Project updated successfully",
       project: updatedProject,
@@ -98,7 +96,9 @@ async function deleteProject(
   id: string
 ) {
   try {
-    await prisma.project.delete({ where: { id } });
+    await prisma.project.delete({
+      where: { id },
+    });
     res.status(200).json({ message: "Project deleted successfully" });
   } catch (error) {
     console.error(error);
